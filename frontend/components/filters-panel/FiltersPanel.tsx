@@ -174,7 +174,7 @@ export default function FiltersPanel({ flights, filters, onChange, cheapestPrice
       const cur = map.get(code) ?? { count: 0, minPrice: Infinity, name };
       map.set(code, { count: cur.count + 1, minPrice: Math.min(cur.minPrice, f.price), name });
     });
-    return [...map.entries()].sort((a, b) => a[1].minPrice - b[1].minPrice);
+    return Array.from(map.entries()).sort((a, b) => a[1].minPrice - b[1].minPrice);
   }, [flights]);
 
   const durationStats = useMemo(() => {
