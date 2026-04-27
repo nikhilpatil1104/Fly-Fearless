@@ -148,11 +148,7 @@ function ActiveFilterChips({
   // Stops chips
   const allStops = new Set([0, 1, 2]);
   if (filters.stops.size < 3) {
-    [...allStops].filter((s) => !filters.stops.has(s)).forEach((s) => {
-      // show which are EXCLUDED as "without X" — actually show which are ACTIVE
-    });
-    // Show included stops
-    [...filters.stops].forEach((s) => {
+    Array.from(filters.stops).forEach((s) => {
       const label = s === 0 ? "Nonstop" : s === 1 ? "1 stop" : "2+ stops";
       chips.push({
         label,
@@ -167,7 +163,7 @@ function ActiveFilterChips({
 
   // Airline chips — only when some are unchecked
   if (filters.airlines.size < allAirlines.size && filters.airlines.size > 0) {
-    [...filters.airlines].forEach((code) => {
+    Array.from(filters.airlines).forEach((code) => {
       const name = flights.find((f) => f.airline === code)?.airlineName ?? code;
       chips.push({
         label: name,
@@ -185,8 +181,8 @@ function ActiveFilterChips({
   if (filters.refundableOnly) chips.push({ label: "Refundable", onRemove: () => onChange({ ...filters, refundableOnly: false }) });
   if (filters.maxPrice < 9999) chips.push({ label: `Up to $${filters.maxPrice}`, onRemove: () => onChange({ ...filters, maxPrice: 9999 }) });
   if (filters.maxDuration < 9999) chips.push({ label: `Under ${Math.floor(filters.maxDuration / 60)}h ${filters.maxDuration % 60}m`, onRemove: () => onChange({ ...filters, maxDuration: 9999 }) });
-  [...filters.depTimes].forEach((t) => chips.push({ label: `Departs ${t}`, onRemove: () => { const next = new Set(filters.depTimes); next.delete(t); onChange({ ...filters, depTimes: next }); } }));
-  [...filters.arrTimes].forEach((t) => chips.push({ label: `Arrives ${t}`, onRemove: () => { const next = new Set(filters.arrTimes); next.delete(t); onChange({ ...filters, arrTimes: next }); } }));
+  Array.from(filters.depTimes).forEach((t) => chips.push({ label: `Departs ${t}`, onRemove: () => { const next = new Set(filters.depTimes); next.delete(t); onChange({ ...filters, depTimes: next }); } }));
+  Array.from(filters.arrTimes).forEach((t) => chips.push({ label: `Arrives ${t}`, onRemove: () => { const next = new Set(filters.arrTimes); next.delete(t); onChange({ ...filters, arrTimes: next }); } }));
 
   if (chips.length === 0) return null;
 

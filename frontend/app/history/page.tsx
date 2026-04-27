@@ -1,301 +1,141 @@
 "use client";
 
-/**
- * SearchHistoryPage  —  /history
- *
- * Reads from localStorage (key: "skyrisk_search_history").
- * Shows each past search as a "Currently Analyzing"-style card
- * identical to the SkyRisk dark card in image 2.
- *
- * No Supabase required.
- */
-
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import Navbar from "@/components/navbar/Navbar";
-import { Clock, Trash2, Search } from "lucide-react";
-
-// ─── Shared types & helpers (copy these into a lib/searchHistory.ts if you want)
-
-const HISTORY_KEY = "skyrisk_search_history";
-const MAX_HISTORY  = 8;
-
-export interface SearchHistoryEntry {
-  origin: string;
-  originCity: string;
-  destination: string;
-  destinationCity: string;
-  tripType: string;
-  depDate: string;
-  retDate?: string;
-  adults: number;
-  cabin: string;
-  airline?: string;         // risk label source — optional
-  riskLabel?: string;       // "Low Risk" | "Medium Risk" | "High Risk"
-  searchedAt: string;       // ISO string
-}
-
-/** Call this from your HeroSection / search handler right before navigating. */
-export function saveSearchToHistory(entry: Omit<SearchHistoryEntry, "searchedAt">) {
-  try {
-    const raw       = localStorage.getItem(HISTORY_KEY);
-    const existing: SearchHistoryEntry[] = raw ? JSON.parse(raw) : [];
-
-    // Remove prior exact duplicate (same route + trip type)
-    const deduped = existing.filter(
-      (e) =>
-        !(
-          e.origin === entry.origin &&
-          e.destination === entry.destination &&
-          e.tripType === entry.tripType
-        )
-    );
-
-    const updated = [
-      { ...entry, searchedAt: new Date().toISOString() },
-      ...deduped,
-    ].slice(0, MAX_HISTORY);
-
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
-  } catch {
-    // localStorage unavailable (SSR / private mode) — silent fail
-  }
-}
-
-export function getSearchHistory(): SearchHistoryEntry[] {
-  try {
-    const raw = localStorage.getItem(HISTORY_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-export function clearSearchHistory() {
-  try {
-    localStorage.removeItem(HISTORY_KEY);
-  } catch {}
-}
-
-// ─── Risk badge colours ───────────────────────────────────────────────────────
-
-function riskBadge(label?: string) {
-  if (!label) return null;
-  const map: Record<string, { dot: string; text: string; border: string }> = {
-    "Low Risk":    { dot: "#4ade80", text: "#4ade80", border: "rgba(74,222,128,0.35)"  },
-    "Medium Risk": { dot: "#fbbf24", text: "#fbbf24", border: "rgba(251,191,36,0.35)"  },
-    "High Risk":   { dot: "#f87171", text: "#f87171", border: "rgba(248,113,113,0.35)" },
-  };
-  const colours = map[label] ?? map["Medium Risk"];
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "4px 12px",
-        borderRadius: 999,
-        border: `1px solid ${colours.border}`,
-        fontSize: 12,
-        fontWeight: 600,
-        color: colours.text,
-        background: "rgba(255,255,255,0.04)",
-        whiteSpace: "nowrap",
-      }}
-    >
-      <span
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: "50%",
-          background: colours.dot,
-          display: "inline-block",
-          flexShrink: 0,
-        }}
-      />
-      {label}
-    </span>
-  );
-}
-
-// ─── Relative time helper ─────────────────────────────────────────────────────
-
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1)  return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24)  return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days === 1) return "yesterday";
-  return `${days} days ago`;
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
+import { Clock, Plane, ArrowRight, Search } from "lucide-react";
+import type { UserSearch } from "@/lib/supabase";
+import { format, parseISO } from "date-fns";
 
 export default function SearchHistoryPage() {
+  const [searches, setSearches] = useState<UserSearch[]>([]);
+  const [loading, setLoading]   = useState(true);
   const router = useRouter();
-  const [history, setHistory] = useState<SearchHistoryEntry[]>([]);
-  const [mounted, setMounted] = useState(false);
 
-  // Only read localStorage client-side
   useEffect(() => {
-    setMounted(true);
-    setHistory(getSearchHistory());
-  }, []);
+    const load = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push("/signin"); return; }
 
-  const handleClear = () => {
-    clearSearchHistory();
-    setHistory([]);
-  };
+      const { data, error } = await supabase
+        .from("user_searches")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("searched_at", { ascending: false })
+        .limit(20);
 
-  const handleSearch = (entry: SearchHistoryEntry) => {
+      if (error) {
+        console.error("History load error:", error.message);
+        // Table may not exist yet - show empty state
+        setSearches([]);
+      } else {
+        setSearches(data ?? []);
+      }
+      setLoading(false);
+    };
+    load();
+  }, [router]);
+
+  const repeatSearch = (s: UserSearch) => {
     const params = new URLSearchParams({
-      origin:      entry.origin,
-      destination: entry.destination,
-      tripType:    entry.tripType,
-      adults:      String(entry.adults),
-      cabin:       entry.cabin,
-      dep:         entry.depDate,
-      ...(entry.retDate ? { ret: entry.retDate } : {}),
+      origin:      s.origin,
+      destination: s.destination,
+      tripType:    s.trip_type,
+      adults:      String(s.adults),
+      cabin:       s.cabin,
+      dep:         s.dep_date,
+      ...(s.ret_date ? { ret: s.ret_date } : {}),
     });
-    router.push(`/flights/search?${params.toString()}`);
+    router.push(`/flights/search?${params}`);
   };
 
   return (
-    <div className="min-h-screen bg-[var(--sky-bg)]">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0F1117]">
       <Navbar />
-
-      <div className="max-w-3xl mx-auto px-4 py-12">
-
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Search History</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Your last {MAX_HISTORY} searches — saved locally on this device
-            </p>
-          </div>
-          {history.length > 0 && (
-            <button
-              type="button"
-              onClick={handleClear}
-              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-400 transition-colors"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Clear all
-            </button>
-          )}
+      <div className="max-w-3xl mx-auto px-4 py-10">
+        <div className="flex items-center gap-3 mb-8">
+          <Clock className="w-6 h-6 text-[var(--sky-primary)]" />
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Search History</h1>
         </div>
 
-        {/* Empty state */}
-        {mounted && history.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <Clock className="w-12 h-12 text-gray-300 dark:text-gray-700 mb-4" />
-            <p className="text-gray-500 dark:text-gray-400 font-medium">No searches yet</p>
-            <p className="text-sm text-gray-400 dark:text-gray-600 mt-1">
-              Your searches will appear here after you look up a flight.
-            </p>
+        {loading && (
+          <div className="space-y-3">
+            {[1,2,3].map((i) => (
+              <div key={i} className="h-20 bg-white dark:bg-[#1C1F26] rounded-2xl animate-pulse border border-gray-200 dark:border-gray-800" />
+            ))}
+          </div>
+        )}
+
+        {!loading && searches.length === 0 && (
+          <div className="text-center py-16">
+            <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+            <p className="text-gray-500 font-medium">No searches yet</p>
+            <p className="text-sm text-gray-400 mt-1">Your flight searches will appear here</p>
             <button
-              type="button"
               onClick={() => router.push("/")}
-              className="mt-6 px-5 py-2 rounded-full text-sm font-medium bg-[var(--sky-primary)] text-white hover:opacity-90 transition"
+              className="mt-6 px-6 py-2.5 bg-[var(--sky-primary)] text-white rounded-full text-sm font-bold hover:bg-[var(--sky-primary-hover)] transition-colors"
             >
               Search flights
             </button>
           </div>
         )}
 
-        {/* History cards — styled like the SkyRisk "Currently Analyzing" card */}
-        {mounted && history.length > 0 && (
+        {!loading && searches.length > 0 && (
           <div className="space-y-3">
-            {history.map((entry, i) => (
+            {searches.map((s) => (
               <div
-                key={i}
-                style={{
-                  background: "#0d1117",
-                  borderRadius: 14,
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  borderLeft: "3px solid #2563eb",
-                  padding: "18px 22px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 16,
-                  cursor: "pointer",
-                  transition: "border-color 0.2s, box-shadow 0.2s",
-                }}
-                className="group hover:border-l-[var(--sky-primary)] hover:shadow-md hover:shadow-blue-900/20"
-                onClick={() => handleSearch(entry)}
+                key={s.id}
+                className="bg-white dark:bg-[#1C1F26] border border-gray-200 dark:border-gray-800 rounded-2xl p-5
+                           hover:border-[var(--sky-primary)] hover:shadow-md transition-all"
               >
-                {/* Left: label + route + meta */}
-                <div className="flex-1 min-w-0">
-                  <div
-                    style={{
-                      fontSize: 10,
-                      letterSpacing: "0.12em",
-                      textTransform: "uppercase",
-                      color: "#6b7280",
-                      marginBottom: 4,
-                    }}
-                  >
-                    {i === 0 ? "Most recent search" : relativeTime(entry.searchedAt)}
-                  </div>
-
-                  {/* Route line — the big text from image 2 */}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      fontSize: 17,
-                      fontWeight: 700,
-                      color: "#f9fafb",
-                      marginBottom: 3,
-                    }}
-                  >
-                    <span>{entry.origin}</span>
-                    <span style={{ color: "#6b7280", fontSize: 14 }}>→</span>
-                    <span>{entry.destination}</span>
-                  </div>
-
-                  {/* Sub-line: airline or city names · trip type */}
-                  <div style={{ fontSize: 12, color: "#9ca3af" }}>
-                    {entry.originCity && entry.destinationCity
-                      ? `${entry.originCity} → ${entry.destinationCity}`
-                      : entry.airline ?? ""}
-                    {" · "}
-                    {entry.tripType}
-                    {" · "}
-                    {entry.depDate}
-                    {entry.retDate ? ` → ${entry.retDate}` : ""}
-                  </div>
-                </div>
-
-                {/* Right: risk badge OR search-again icon */}
-                <div className="flex-shrink-0 flex items-center gap-3">
-                  {entry.riskLabel
-                    ? riskBadge(entry.riskLabel)
-                    : (
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 5,
-                          padding: "4px 12px",
-                          borderRadius: 999,
-                          border: "1px solid rgba(37,99,235,0.35)",
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: "#60a5fa",
-                          background: "rgba(37,99,235,0.08)",
-                        }}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Search className="w-3 h-3" />
-                        Search again
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center">
+                      <Plane className="w-5 h-5 text-[var(--sky-primary)]" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-bold text-gray-900 dark:text-white">{s.origin}</span>
+                        <ArrowRight className="w-4 h-4 text-gray-400" />
+                        <span className="text-lg font-bold text-gray-900 dark:text-white">{s.destination}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                          s.trip_type === "Roundtrip"
+                            ? "bg-blue-50 dark:bg-blue-950/40 text-[var(--sky-primary)]"
+                            : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                        }`}>
+                          {s.trip_type}
+                        </span>
                       </div>
-                    )}
+                      <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                        <span>{format(parseISO(s.dep_date), "MMM d, yyyy")}</span>
+                        {s.ret_date && (
+                          <>
+                            <span>→</span>
+                            <span>{format(parseISO(s.ret_date), "MMM d, yyyy")}</span>
+                          </>
+                        )}
+                        <span>·</span>
+                        <span>{s.adults} traveler{s.adults > 1 ? "s" : ""}</span>
+                        <span>·</span>
+                        <span>{s.cabin}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-2">
+                    <span className="text-xs text-gray-400">
+                      {s.searched_at ? format(parseISO(s.searched_at), "MMM d, h:mm a") : ""}
+                    </span>
+                    <button
+                      onClick={() => repeatSearch(s)}
+                      className="px-4 py-1.5 text-xs font-bold text-[var(--sky-primary)]
+                                 border border-[var(--sky-primary)] rounded-full
+                                 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors"
+                    >
+                      Search again
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
