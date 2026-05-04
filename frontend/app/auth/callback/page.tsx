@@ -8,12 +8,37 @@ export default function AuthCallback() {
   const router = useRouter();
 
   useEffect(() => {
-    // Supabase handles the token exchange from the URL hash
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN") {
+    const handleCallback = async () => {
+      const search = window.location.search;
+      const hash   = window.location.hash;
+
+      console.log("Callback search:", search);
+      console.log("Callback hash:", hash);
+
+      // PKCE flow — exchange code for session
+      if (search.includes("code=")) {
+        const { error } = await supabase.auth.exchangeCodeForSession(
+          window.location.href
+        );
+        if (error) {
+          console.error("Exchange error:", error.message);
+          router.replace("/signin");
+          return;
+        }
         router.replace("/");
+        return;
       }
-    });
+
+      // Implicit flow — session already set via hash
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        router.replace("/");
+      } else {
+        router.replace("/signin");
+      }
+    };
+
+    handleCallback();
   }, [router]);
 
   return (

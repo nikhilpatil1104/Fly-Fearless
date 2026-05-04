@@ -85,13 +85,17 @@ export default function AuthPage() {
   const signInWith = async (provider: "google" | "apple" | "facebook") => {
     setOAuthLoading(provider);
     clearMessages();
+    const redirectTo = `${window.location.origin}/auth/callback`;
+    console.log("OAuth redirectTo:", redirectTo);
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo,
+        skipBrowserRedirect: false,
         queryParams: provider === "google" ? {
           access_type: "offline",
-          prompt: "consent",
+          prompt: "select_account",
         } : undefined,
       },
     });
