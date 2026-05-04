@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
@@ -217,7 +217,7 @@ function ActiveFilterChips({
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
-export default function SearchResultsPage() {
+function SearchResultsPageInner() {
   const searchParams = useSearchParams();
   const router       = useRouter();
   const { sentinelRef, stuck } = useStickyObserver();
@@ -312,7 +312,7 @@ export default function SearchResultsPage() {
 
   // ── Filter + sort ─────────────────────────────────────────────────────────
   const displayed = useMemo(() => {
-    let result = [...allFlights];
+    let result = Array.from(allFlights);
     const totalAirlines = new Set(allFlights.map((f) => f.airline)).size;
 
     if (filters.stops.size > 0 && filters.stops.size < 3)
@@ -549,5 +549,13 @@ export default function SearchResultsPage() {
       </div>
       <ChatBubble />
     </div>
+  );
+}
+
+export default function SearchResultsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 dark:bg-[#0F1117]" />}>
+      <SearchResultsPageInner />
+    </Suspense>
   );
 }

@@ -193,7 +193,7 @@ export default function UploadPage() {
                   <FieldRow icon={<Tag className="w-4 h-4" />} label="Seat" value={result.seat} />
                   <FieldRow icon={<Tag className="w-4 h-4" />} label="Gate" value={result.gate ? `Gate ${result.gate}${result.terminal ? ` · Terminal ${result.terminal}` : ""}` : null} />
                   <FieldRow icon={<Tag className="w-4 h-4" />} label="Boarding" value={result.boardingTime} />
-                  <FieldRow icon={<Tag className="w-4 h-4" />} label="Booking ref" value={result.bookingReference ?? result.confirmationCode} />
+                  <FieldRow icon={<Tag className="w-4 h-4" />} label="Booking ref" value={result.bookingReference} />
                   <FieldRow icon={<Briefcase className="w-4 h-4" />} label="Class" value={result.cabinClass} />
                   <FieldRow icon={<Briefcase className="w-4 h-4" />} label="Baggage" value={result.baggage} />
                 </div>

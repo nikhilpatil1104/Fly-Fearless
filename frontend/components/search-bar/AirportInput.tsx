@@ -21,7 +21,7 @@ function groupByCity(airports: Airport[]): { key: string; city: string; country:
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(a);
   }
-  return [...map.entries()].map(([k, airports]) => {
+  return Array.from(map.entries()).map(([k, airports]) => {
     const [city, country] = k.split("||");
     return { key: k, city, country, airports };
   });
