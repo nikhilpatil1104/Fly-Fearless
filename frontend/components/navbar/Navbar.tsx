@@ -44,18 +44,14 @@ export default function Navbar() {
     <header className="sticky top-0 z-[60] w-full bg-white dark:bg-[#0F1117] border-b border-[var(--sky-border)]">
       <div className="max-w-[1400px] mx-auto px-4 lg:px-6 h-14 flex items-center justify-between gap-4">
 
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 flex-shrink-0 group">
-          {/* Modern minimal plane logo */}
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="8" fill="#0070CC"/>
-            <path d="M6 17.5L14 14.5L12 8L15 9.5L18 14L24 12L26 13.5L20 17L21 24L18 22.5L16 18.5L10 21L6 17.5Z"
-              fill="white" stroke="white" strokeWidth="0.3" strokeLinejoin="round"/>
-          </svg>
-          <span className="font-bold text-xl tracking-tight text-black dark:text-white">
-            Sky<span className="text-[var(--sky-primary)]">Risk</span>
+         {/* Logo */}
+        <div className="relative z-10 p-8 flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="SkyRisk" className="w-9 h-9 object-contain" />
+          <span className="text-2xl font-bold text-white tracking-tight">
+            Sky<span className="text-[#60b3ff]">Risk</span>
           </span>
-        </Link>
+        </div>
 
         {/* Right — functional links only */}
         <div className="flex items-center gap-1 flex-shrink-0">
