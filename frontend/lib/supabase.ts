@@ -3,9 +3,6 @@ import { createBrowserClient } from "@supabase/ssr";
 const supabaseUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// Use createBrowserClient from @supabase/ssr
-// This stores the PKCE code verifier in cookies (not localStorage)
-// so it survives middleware redirects in production
 export const supabase = createBrowserClient(supabaseUrl, supabaseAnon);
 
 export interface UserSearch {
