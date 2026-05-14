@@ -1,4 +1,4 @@
-# ✈ SkyRisk — Production Flight Booking Platform
+# ✈ SkyRisk - Production Flight Booking Platform
 
 > Pixel-for-pixel Expedia clone powered by **SerpAPI Google Flights** + **OpenAI GPT-4o** + **Next.js 14** + **FastAPI**
 
