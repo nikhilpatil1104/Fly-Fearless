@@ -44,14 +44,24 @@ export default function Navbar() {
     <header className="sticky top-0 z-[60] w-full bg-white dark:bg-[#0F1117] border-b border-[var(--sky-border)]">
       <div className="max-w-[1400px] mx-auto px-4 lg:px-6 h-14 flex items-center justify-between gap-4">
 
-         {/* Logo */}
-        <div className="relative z-10 p-8 flex items-center gap-3">
+        
+        {/* Logo — click to return to the homepage */}
+        <Link
+          href="/"
+          aria-label="SkyRisk home"
+          className="relative z-10 p-8 flex items-center gap-3 cursor-pointer"
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="SkyRisk" className="w-9 h-9 object-contain" />
+          <img
+            src="/logo.png"
+            alt="SkyRisk"
+            className="w-9 h-9 object-contain"
+          />
           <span className="text-2xl font-bold text-white tracking-tight">
             Sky<span className="text-[#60b3ff]">Risk</span>
           </span>
-        </div>
+        </Link>
+
 
         {/* Right — functional links only */}
         <div className="flex items-center gap-1 flex-shrink-0">
