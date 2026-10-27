@@ -4,9 +4,12 @@ import type {
   FlexibleDatePrice,
 } from "./types";
 
+
 const BASE = process.env.NEXT_PUBLIC_API_URL
-  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
+  ? `${process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, "")}/api`
   : "/api";
+
+
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
